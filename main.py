@@ -157,7 +157,7 @@ class AudioClassifier:
             "waveform": {
                 "values": waveform_data.tolist(),
                 "sample_rate": 44100,
-                "duration": len(audio_data) / 44100
+                "duration": len(audio_data) / waveform_sample_rate
 
             }
 
