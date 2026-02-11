@@ -34,7 +34,7 @@ class AudioProcessor:
             hop_length=512,
             n_mels=128,
             f_min=0,
-            f_max= 11025 # 44100/2
+            f_max= 22050 # 44100/2
         ),
         T.AmplitudeToDB()
     )   
