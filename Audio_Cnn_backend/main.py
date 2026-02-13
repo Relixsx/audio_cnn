@@ -10,6 +10,10 @@ from model import Audio_Model
 import soundfile as sf
 from pydantic import BaseModel
 import requests
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 
 
 app  = modal.App("Sound_classification")
@@ -22,6 +26,18 @@ image = (modal.Image.debian_slim()
 
 
 model_volume = modal.Volume.from_name("esc-model")
+
+
+web_app = FastAPI()
+
+web_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # allow all for development
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 
 class AudioProcessor:
@@ -83,11 +99,8 @@ class AudioClassifier:
         self.audio_processor = AudioProcessor()
 
         print("Model loaded on enter")
-
-
-        # model endpoint
-    @modal.fastapi_endpoint(method="POST")
-    def inference(self, request: InferenceRequest):
+    @modal.method()
+    def run_inference(self, request: InferenceRequest):
         audio_bytes = base64.b64decode(request.audio_data)
 
         audio_data, sample_rate = sf.read(io.BytesIO(audio_bytes), dtype ="float32")
@@ -164,7 +177,25 @@ class AudioClassifier:
             }
 
         return response
+    
 
+
+
+
+
+
+
+@app.function(image=image)
+@modal.asgi_app()
+def fastapi_app():
+    classifier = AudioClassifier()
+
+    @web_app.post("/inference")
+    async def inference(request: InferenceRequest):
+        result = classifier.run_inference.remote(request)
+        return result
+
+    return web_app
 
 @app.local_entrypoint()
 def main():
@@ -176,9 +207,8 @@ def main():
     audio_b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
     payload = {"audio_data": audio_b64}
 
-    server = AudioClassifier()
+    url = "https://relixsx--sound-classification-fastapi-app.modal.run/inference"
 
-    url =  server.inference.get_web_url()
     response = requests.post(url,json=payload)
     response.raise_for_status()
 
